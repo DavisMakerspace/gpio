@@ -7,9 +7,11 @@ class GPIO
   GPIO_PATH = "/sys/class/gpio"
   DIRECTIONS = [:in, :out, :high, :low]
   EDGES = [:none, :rising, :falling, :both]
-  def initialize(id)
+  def initialize(id, direction = nil, edge = nil)
     @id = id
-    attach
+    export
+    self.direction = direction if direction
+    self.edge = edge if edge
   end
   def path(file)
     return "#{GPIO_PATH}/gpio#{@id}/#{file}"
@@ -26,27 +28,30 @@ class GPIO
   def exported?()
     return File.exists?(value_path)
   end
-  def attach()
-    if exported?
-      if input?
-        @value_file = File.new(value_path, "r")
-      else
-        @value_file = File.new(value_path, "w")
-      end
-    else
-      @value_file = nil
+  def export()
+    File.write("#{GPIO_PATH}/export", @id) if !exported?
+    if input? && (!@value_file || @value_file_mode == "w")
+      @value_file_mode = "r"
+      @value_file = File.new(value_path, @value_file_mode)
+    elsif output? && (!@value_file || @value_file_mode != "w")
+      @value_file_mode = "w"
+      @value_file = File.new(value_path, @value_file_mode)
     end
   end
-  def export()
-    File.write("#{GPIO_PATH}/export", @id)
-    attach
-  end
   def unexport()
-    File.write("#{GPIO_PATH}/unexport", @id)
-    attach
+    File.write("#{GPIO_PATH}/unexport", @id) if exported?
+    @value_file = nil
   end
   def direction()
+    raise GPIONotExportedError.new if !exported?
     return File.read(direction_path).strip.to_sym
+  end
+  def direction=(d)
+    raise GPIOSyntaxError.new if !DIRECTIONS.include?(d)
+    raise GPIONotExportedError.new if !exported?
+    new_direction = [:high, :low].include?(d) ? :out : d
+    File.write(direction_path, d) if direction != new_direction
+    export
   end
   def input?()
     return direction == :in
@@ -54,25 +59,24 @@ class GPIO
   def output?()
     return direction == :out
   end
-  def direction=(d)
-    raise GPIOSyntaxError.new if !DIRECTIONS.include?(d)
-    File.write(direction_path, d)
-    attach()
-  end
   def edge()
+    raise GPIONotExportedError.new if !exported?
     return File.read(edge_path).strip.to_sym
   end
   def edge=(e)
     raise GPIOSyntaxError.new if !EDGES.include?(e)
-    File.write(edge_path, e)
+    raise GPIONotExportedError.new if !exported?
+    File.write(edge_path, e) if edge != e
   end
   def value()
+    raise GPIONotExportedError.new if !exported?
     v = @value_file.read(1)
     @value_file.rewind()
     return v == "0" ? false : true
   end
   def value=(v)
-    raise GPIOReadOnlyError.new() if input?
+    raise GPIONotExportedError.new if !exported?
+    raise GPIOReadOnlyError.new if input?
     @value_file.write(v)
     @value_file.rewind()
   end
@@ -83,9 +87,15 @@ class GPIO
     self.value = "0"
   end
   def poll(timeout = nil)
-    r,w,ready = IO.select(nil, nil, [value_file], timeout)
+    raise GPIONotExportedError.new if !exported?
+    r,w,ready = IO.select(nil, nil, [@value_file], timeout)
     return value
   end
-  attr_reader :value_file
+  def chown(owner_int, group_int)
+    @value_file.chown(owner_int, group_int)
+  end
+  def chmod(mode_int)
+    @value_file.chmod(mode_int)
+  end
 end
 
