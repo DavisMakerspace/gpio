@@ -2,6 +2,7 @@ class GPIOException < RuntimeError; end
 class GPIOSyntaxError < GPIOException; end
 class GPIOReadOnlyError < GPIOException; end
 class GPIONotExportedError < GPIOException; end
+class GPIOPermissionError < GPIOException; end
 
 class GPIO
   GPIO_PATH = "/sys/class/gpio"
@@ -9,9 +10,7 @@ class GPIO
   EDGES = [:none, :rising, :falling, :both]
   def initialize(id, direction = nil, edge = nil)
     @id = id
-    export
-    self.direction = direction if direction
-    self.edge = edge if edge
+    export(direction, edge)
   end
   def path(file)
     return "#{GPIO_PATH}/gpio#{@id}/#{file}"
@@ -28,8 +27,12 @@ class GPIO
   def exported?()
     return File.exists?(value_path)
   end
-  def export()
-    File.write("#{GPIO_PATH}/export", @id) if !exported?
+  def export(direction = nil, edge = nil)
+    if !exported?
+      File.write("#{GPIO_PATH}/export", @id)
+      self.direction = direction if direction
+      self.edge = edge if edge
+    end
     if input? && (!@value_file || @value_file_mode == "w")
       @value_file_mode = "r"
       @value_file = File.new(value_path, @value_file_mode)
@@ -49,9 +52,8 @@ class GPIO
   def direction=(d)
     raise GPIOSyntaxError.new if !DIRECTIONS.include?(d)
     raise GPIONotExportedError.new if !exported?
-    new_direction = [:high, :low].include?(d) ? :out : d
-    File.write(direction_path, d) if direction != new_direction
-    export
+    raise GPIOPermissionError if !File.writable?(direction_path)
+    File.write(direction_path, d)
   end
   def input?()
     return direction == :in
@@ -66,6 +68,7 @@ class GPIO
   def edge=(e)
     raise GPIOSyntaxError.new if !EDGES.include?(e)
     raise GPIONotExportedError.new if !exported?
+    raise GPIOPermissionError if !File.writable?(edge_path)
     File.write(edge_path, e) if edge != e
   end
   def value()
@@ -87,9 +90,14 @@ class GPIO
     self.value = "0"
   end
   def poll(timeout = nil)
-    raise GPIONotExportedError.new if !exported?
-    r,w,ready = IO.select(nil, nil, [@value_file], timeout)
-    return value
+    if block_given?
+      while @value_file
+        yield self.poll timeout
+      end
+    else
+      raise GPIONotExportedError.new if !exported?
+      return IO.select(nil, nil, [@value_file], timeout) != nil ? value : nil
+    end
   end
   def chown(owner_int, group_int)
     @value_file.chown(owner_int, group_int)
