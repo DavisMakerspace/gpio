@@ -118,9 +118,9 @@ class GPIOPoller
       gpios.each { |g| io2gpio[g.instance_variable_get(:@value_file)] = g }
       ready = IO.select(nil, nil, io2gpio.keys, @timeout)
       if ready
-        ready[2].each { |io| yield io2gpio[io] }
+        ready[2].each { |io| yield io2gpio[io], io2gpio[io].value }
       else
-        yield nil
+        yield nil, nil
       end
     end
   end
