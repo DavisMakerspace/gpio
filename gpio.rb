@@ -120,7 +120,7 @@ class GPIOPoller
       if ready
         ready[2].each { |io| yield io2gpio[io], io2gpio[io].value }
       else
-        yield nil, nil
+        yield :timeout
       end
     end
   end
