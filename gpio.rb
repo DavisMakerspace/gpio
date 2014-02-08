@@ -1,13 +1,10 @@
 class GPIOException < RuntimeError; end
-class GPIOSyntaxError < GPIOException; end
 class GPIOReadOnlyError < GPIOException; end
 class GPIONotExportedError < GPIOException; end
 class GPIOPermissionError < GPIOException; end
 
 class GPIO
   GPIO_PATH = "/sys/class/gpio"
-  DIRECTIONS = [:in, :out, :high, :low]
-  EDGES = [:none, :rising, :falling, :both]
   def initialize(id, direction = nil, edge = nil)
     @id = id
     export(direction, edge)
@@ -50,10 +47,10 @@ class GPIO
     return File.read(direction_path).strip.to_sym
   end
   def direction=(d)
-    raise GPIOSyntaxError.new if !DIRECTIONS.include?(d)
     raise GPIONotExportedError.new if !exported?
     raise GPIOPermissionError if !File.writable?(direction_path)
     File.write(direction_path, d)
+    direction
   end
   def input?()
     return direction == :in
@@ -66,10 +63,10 @@ class GPIO
     return File.read(edge_path).strip.to_sym
   end
   def edge=(e)
-    raise GPIOSyntaxError.new if !EDGES.include?(e)
     raise GPIONotExportedError.new if !exported?
     raise GPIOPermissionError if !File.writable?(edge_path)
-    File.write(edge_path, e) if edge != e
+    File.write(edge_path, e)
+    edge
   end
   def value()
     raise GPIONotExportedError.new if !exported?
