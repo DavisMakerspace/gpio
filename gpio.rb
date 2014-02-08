@@ -10,19 +10,19 @@ class GPIO
     export(direction, edge)
   end
   def path(file)
-    return "#{GPIO_PATH}/gpio#{@id}/#{file}"
+    "#{GPIO_PATH}/gpio#{@id}/#{file}"
   end
   def direction_path()
-    return path("direction")
+    path("direction")
   end
   def value_path()
-    return path("value")
+    path("value")
   end
   def edge_path()
-    return path("edge")
+    path("edge")
   end
   def exported?()
-    return File.exists?(value_path)
+    File.exists?(value_path)
   end
   def export(direction = nil, edge = nil)
     if !exported?
@@ -44,7 +44,7 @@ class GPIO
   end
   def direction()
     raise GPIONotExportedError.new if !exported?
-    return File.read(direction_path).strip.to_sym
+    File.read(direction_path).strip.to_sym
   end
   def direction=(d)
     raise GPIONotExportedError.new if !exported?
@@ -53,14 +53,14 @@ class GPIO
     direction
   end
   def input?()
-    return direction == :in
+    direction == :in
   end
   def output?()
-    return direction == :out
+    direction == :out
   end
   def edge()
     raise GPIONotExportedError.new if !exported?
-    return File.read(edge_path).strip.to_sym
+    File.read(edge_path).strip.to_sym
   end
   def edge=(e)
     raise GPIONotExportedError.new if !exported?
@@ -72,7 +72,7 @@ class GPIO
     raise GPIONotExportedError.new if !exported?
     v = @value_file.read(1)
     @value_file.rewind()
-    return v == "0" ? false : true
+    v == "0" ? false : true
   end
   def value=(v)
     raise GPIONotExportedError.new if !exported?
@@ -93,7 +93,7 @@ class GPIO
       end
     else
       raise GPIONotExportedError.new if !exported?
-      return IO.select(nil, nil, [@value_file], timeout) != nil ? value : nil
+      IO.select(nil, nil, [@value_file], timeout) != nil ? value : nil
     end
   end
   def chown(owner_int, group_int)
