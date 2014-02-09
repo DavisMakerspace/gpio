@@ -33,7 +33,7 @@ class GPIO
   end
   def direction()
     raise GPIONotExportedError.new if !exported?
-    File.read(direction_path).strip.to_sym
+    File.read(direction_path).chomp
   end
   def direction=(d)
     raise GPIONotExportedError.new if !exported?
@@ -44,14 +44,14 @@ class GPIO
     direction
   end
   def input?()
-    direction == :in
+    direction == 'in'
   end
   def output?()
-    direction == :out
+    direction == 'out'
   end
   def edge()
     raise GPIONotExportedError.new if !exported?
-    File.read(edge_path).strip.to_sym
+    File.read(edge_path).chomp
   end
   def edge=(e)
     raise GPIONotExportedError.new if !exported?
