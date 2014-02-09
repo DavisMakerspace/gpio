@@ -24,17 +24,11 @@ class GPIO
     File.exists?(value_path)
   end
   def export
-    File.write("#{GPIO_PATH}/export", @id) if !exported?
-    if input? && (!@value_file || @value_file_mode == "w")
-      @value_file_mode = "r"
-      @value_file = File.new(value_path, @value_file_mode)
-    elsif output? && (!@value_file || @value_file_mode != "w")
-      @value_file_mode = "w"
-      @value_file = File.new(value_path, @value_file_mode)
-    end
+    File.write("#{GPIO_PATH}/export", @id)
+    direction = self.direction
   end
   def unexport()
-    File.write("#{GPIO_PATH}/unexport", @id) if exported?
+    File.write("#{GPIO_PATH}/unexport", @id)
     @value_file = nil
   end
   def direction()
@@ -45,6 +39,8 @@ class GPIO
     raise GPIONotExportedError.new if !exported?
     raise GPIOPermissionError if !File.writable?(direction_path)
     File.write(direction_path, d)
+    @value_file = File.new(value_path, 'r') if input?
+    @value_file = File.new(value_path, 'w+') if output?
     direction
   end
   def input?()
@@ -66,14 +62,14 @@ class GPIO
   def value()
     raise GPIONotExportedError.new if !exported?
     v = @value_file.read(1)
-    @value_file.rewind()
+    @value_file.rewind
     v == "0" ? false : true
   end
   def value=(v)
     raise GPIONotExportedError.new if !exported?
     raise GPIOReadOnlyError.new if input?
-    @value_file.write(v)
-    @value_file.rewind()
+    @value_file.write v.to_s
+    @value_file.rewind
   end
   def set()
     self.value = "1"
