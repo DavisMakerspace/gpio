@@ -61,15 +61,14 @@ class GPIO
   end
   def value()
     raise GPIONotExportedError.new if !exported?
-    v = @value_file.read(1)
     @value_file.rewind
-    v == "0" ? false : true
+    @value_file.read(1)
   end
   def value=(v)
     raise GPIONotExportedError.new if !exported?
     raise GPIOReadOnlyError.new if input?
-    @value_file.write v.to_s
     @value_file.rewind
+    @value_file.write v.to_s
   end
   def set()
     self.value = "1"
