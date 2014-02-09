@@ -11,27 +11,19 @@ class GPIO
   end
   def path(file); "#{GPIO_PATH}/gpio#{@id}/#{file}"; end
   private :path
-  def direction_path()
-    path("direction")
-  end
-  def value_path()
-    path("value")
-  end
-  def edge_path()
-    path("edge")
-  end
-  def exported?()
-    File.exists?(value_path)
-  end
+  def direction_path; path("direction"); end
+  def value_path; path("value"); end
+  def edge_path; path("edge"); end
+  def exported?; File.exists?(value_path); end
   def export
     File.write("#{GPIO_PATH}/export", @id)
     direction = self.direction
   end
-  def unexport()
+  def unexport
     File.write("#{GPIO_PATH}/unexport", @id)
     @value_file = nil
   end
-  def direction()
+  def direction
     raise GPIONotExportedError.new if !exported?
     File.read(direction_path).chomp
   end
@@ -43,13 +35,9 @@ class GPIO
     @value_file = File.new(value_path, 'w+') if output?
     direction
   end
-  def input?()
-    direction == 'in'
-  end
-  def output?()
-    direction == 'out'
-  end
-  def edge()
+  def input?; direction == 'in'; end
+  def output?; direction == 'out'; end
+  def edge
     raise GPIONotExportedError.new if !exported?
     File.read(edge_path).chomp
   end
@@ -59,23 +47,21 @@ class GPIO
     File.write(edge_path, e)
     edge
   end
-  def value()
+  def value
     raise GPIONotExportedError.new if !exported?
     @value_file.rewind
     @value_file.read(1)
   end
+  def set?; self.value == "1"; end
+  def clear?; self.value == "0"; end
   def value=(v)
     raise GPIONotExportedError.new if !exported?
     raise GPIOReadOnlyError.new if input?
     @value_file.rewind
     @value_file.write v.to_s
   end
-  def set()
-    self.value = "1"
-  end
-  def clear()
-    self.value = "0"
-  end
+  def set(v=true); self.value = v ? "1" : "0"; end
+  def clear; self.value = "0"; end
   def poll(timeout = nil)
     if block_given?
       while @value_file
