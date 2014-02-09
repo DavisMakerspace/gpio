@@ -7,10 +7,10 @@ class GPIO
   GPIO_PATH = "/sys/class/gpio"
   def initialize(id)
     @id = id
+    @value_file = nil
   end
-  def path(file)
-    "#{GPIO_PATH}/gpio#{@id}/#{file}"
-  end
+  def path(file); "#{GPIO_PATH}/gpio#{@id}/#{file}"; end
+  private :path
   def direction_path()
     path("direction")
   end
