@@ -5,9 +5,8 @@ class GPIOPermissionError < GPIOException; end
 
 class GPIO
   GPIO_PATH = "/sys/class/gpio"
-  def initialize(id, direction = nil, edge = nil)
+  def initialize(id)
     @id = id
-    export(direction, edge)
   end
   def path(file)
     "#{GPIO_PATH}/gpio#{@id}/#{file}"
@@ -24,12 +23,8 @@ class GPIO
   def exported?()
     File.exists?(value_path)
   end
-  def export(direction = nil, edge = nil)
-    if !exported?
-      File.write("#{GPIO_PATH}/export", @id)
-      self.direction = direction if direction
-      self.edge = edge if edge
-    end
+  def export
+    File.write("#{GPIO_PATH}/export", @id) if !exported?
     if input? && (!@value_file || @value_file_mode == "w")
       @value_file_mode = "r"
       @value_file = File.new(value_path, @value_file_mode)
