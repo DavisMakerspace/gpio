@@ -1,81 +1,78 @@
-class GPIOException < RuntimeError; end
-class GPIOReadOnlyError < GPIOException; end
-class GPIONotExportedError < GPIOException; end
-class GPIOPermissionError < GPIOException; end
-
 class GPIO
   GPIO_PATH = "/sys/class/gpio"
   def initialize(id)
     @id = id
-    @value_file = nil
   end
-  def path(file); "#{GPIO_PATH}/gpio#{@id}/#{file}"; end
+  def path(attr='')
+    "#{GPIO_PATH}/gpio#{@id}/#{attr}"
+  end
   private :path
-  def direction_path; path("direction"); end
-  def value_path; path("value"); end
-  def edge_path; path("edge"); end
-  def exported?; File.exists?(value_path); end
+  def exported?
+    File.exists?(path)
+  end
   def export
-    File.write("#{GPIO_PATH}/export", @id)
-    direction = self.direction
+    File.write("#{GPIO_PATH}/export", @id); self
   end
   def unexport
-    File.write("#{GPIO_PATH}/unexport", @id)
-    @value_file = nil
+    File.write("#{GPIO_PATH}/unexport", @id); self
   end
-  def direction
-    raise GPIONotExportedError.new if !exported?
-    File.read(direction_path).chomp
+  def input?
+    File.read(path(:direction)).chomp == 'in'
   end
-  def direction=(d)
-    raise GPIONotExportedError.new if !exported?
-    raise GPIOPermissionError if !File.writable?(direction_path)
-    File.write(direction_path, d)
-    @value_file = File.new(value_path, 'r') if input?
-    @value_file = File.new(value_path, 'w+') if output?
-    direction
+  def output?
+    File.read(path(:direction)).chomp == 'out'
   end
-  def input?; direction == 'in'; end
-  def output?; direction == 'out'; end
+  def set_input
+    File.write(path(:direction), 'in'); self
+  end
+  def set_output(value = :low)
+    File.write(path(:direction), value == :low ? 'low':'high'); self
+  end
+  def set?
+    File.read(path(:value)).chomp == '1'
+  end
+  def clear?
+    File.read(path(:value)).chomp == '0'
+  end
+  def set(v = true)
+    File.write(path(:value), v ? '1':'0'); self
+  end
+  def clear
+    set false
+  end
   def edge
-    raise GPIONotExportedError.new if !exported?
-    File.read(edge_path).chomp
+    File.read(path(:edge)).chomp.to_sym
   end
-  def edge=(e)
-    raise GPIONotExportedError.new if !exported?
-    raise GPIOPermissionError if !File.writable?(edge_path)
-    File.write(edge_path, e)
-    edge
+  def set_edge_none
+    File.write(path(:edge), 'none'); self
   end
-  def value
-    raise GPIONotExportedError.new if !exported?
-    @value_file.rewind
-    @value_file.read(1)
+  def set_edge_rising
+    File.write(path(:edge), 'rising'); self
   end
-  def set?; self.value == "1"; end
-  def clear?; self.value == "0"; end
-  def value=(v)
-    raise GPIONotExportedError.new if !exported?
-    raise GPIOReadOnlyError.new if input?
-    @value_file.rewind
-    @value_file.write v.to_s
+  def set_edge_falling
+    File.write(path(:edge), 'falling'); self
   end
-  def set(v=true); self.value = v ? "1" : "0"; end
-  def clear; self.value = "0"; end
-  def poll(timeout = nil)
+  def set_edge_both
+    File.write(path(:edge), 'both'); self
+  end
+  def active_low?
+    File.read(path(:active_low)).chomp == '1'
+  end
+  def set_active_low(v = true)
+    File.write(path(:active_low), v ? '1':'0'); self
+  end
+  def poll_once(vio, timeout=nil)
+    IO.select(nil, nil, [vio], timeout) != nil ? (vio.rewind;vio.read.chomp=='1') : nil
+  end
+  private :poll_once
+  def poll(timeout:nil, ready:nil)
+    vio = File.new path(:value)
+    v = poll_once vio
+    ready.call v if ready
     if block_given?
-      while @value_file
-        yield self.poll timeout
-      end
+      while File.readable? path(:value) do yield(poll_once(vio,timeout)); end
     else
-      raise GPIONotExportedError.new if !exported?
-      IO.select(nil, nil, [@value_file], timeout) != nil ? value : nil
+      poll_once(vio, timeout)
     end
-  end
-  def chown(owner_int, group_int)
-    @value_file.chown(owner_int, group_int)
-  end
-  def chmod(mode_int)
-    @value_file.chmod(mode_int)
   end
 end
