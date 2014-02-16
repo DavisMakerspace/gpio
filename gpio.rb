@@ -3,15 +3,11 @@ class GPIO
   def initialize(id)
     @id = id
   end
-  def path(attr='')
-    "#{GPIO_PATH}/gpio#{@id}/#{attr}"
+  [:value, :direction, :edge, :active_low].each do |attr|
+    define_method("#{attr}_path"){ "#{GPIO_PATH}/gpio#{@id}/#{attr}" }
   end
-  private :path
   def exported?
-    File.exists?(path)
-  end
-  def value_path
-    path(:value)
+    File.exists?(value_path)
   end
   def export
     File.write("#{GPIO_PATH}/export", @id); self
@@ -20,16 +16,16 @@ class GPIO
     File.write("#{GPIO_PATH}/unexport", @id); self
   end
   def input?
-    File.read(path(:direction)).chomp == 'in'
+    File.read(direction_path).chomp == 'in'
   end
   def output?
-    File.read(path(:direction)).chomp == 'out'
+    File.read(direction_path).chomp == 'out'
   end
   def set_input
-    File.write(path(:direction), 'in'); self
+    File.write(direction_path, 'in'); self
   end
   def set_output(value = :low)
-    File.write(path(:direction), value == :low ? 'low':'high'); self
+    File.write(direction_path, value == :low ? 'low':'high'); self
   end
   def set?
     File.read(value_path).chomp == '1'
@@ -44,25 +40,25 @@ class GPIO
     set false
   end
   def edge
-    File.read(path(:edge)).chomp.to_sym
+    File.read(edge_path).chomp.to_sym
   end
   def set_edge_none
-    File.write(path(:edge), 'none'); self
+    File.write(edge_path, 'none'); self
   end
   def set_edge_rising
-    File.write(path(:edge), 'rising'); self
+    File.write(edge_path, 'rising'); self
   end
   def set_edge_falling
-    File.write(path(:edge), 'falling'); self
+    File.write(edge_path, 'falling'); self
   end
   def set_edge_both
-    File.write(path(:edge), 'both'); self
+    File.write(edge_path, 'both'); self
   end
   def active_low?
-    File.read(path(:active_low)).chomp == '1'
+    File.read(active_low_path).chomp == '1'
   end
   def set_active_low(v = true)
-    File.write(path(:active_low), v ? '1':'0'); self
+    File.write(active_low_path, v ? '1':'0'); self
   end
   class << self
     def poll_once(vio2gpio, timeout)
