@@ -10,6 +10,9 @@ class GPIO
   def exported?
     File.exists?(path)
   end
+  def value_path
+    path(:value)
+  end
   def export
     File.write("#{GPIO_PATH}/export", @id); self
   end
@@ -29,13 +32,13 @@ class GPIO
     File.write(path(:direction), value == :low ? 'low':'high'); self
   end
   def set?
-    File.read(path(:value)).chomp == '1'
+    File.read(value_path).chomp == '1'
   end
   def clear?
-    File.read(path(:value)).chomp == '0'
+    File.read(value_path).chomp == '0'
   end
   def set(v = true)
-    File.write(path(:value), v ? '1':'0'); self
+    File.write(value_path, v ? '1':'0'); self
   end
   def clear
     set false
@@ -61,18 +64,36 @@ class GPIO
   def set_active_low(v = true)
     File.write(path(:active_low), v ? '1':'0'); self
   end
-  def poll_once(vio, timeout=nil)
-    IO.select(nil, nil, [vio], timeout) != nil ? (vio.rewind;vio.read.chomp=='1') : nil
+  class << self
+    def poll_once(vio2gpio, timeout)
+      _,_,ready = IO.select(nil, nil, vio2gpio.keys, timeout)
+      ready ? Hash[ready.map{|vio|[vio2gpio[vio],(vio.rewind;vio.read.chomp=='1')]}] : nil
+    end
+    private :poll_once
+    def poll(gpios, timeout:nil, ready:nil)
+      vio2gpio = Hash[ gpios.map{|g| [File.new(g.value_path), g]} ]
+      v = poll_once(vio2gpio,nil)
+      ready.call v if ready
+      while !gpios.empty?
+        gpio2v = poll_once(vio2gpio, timeout)
+        if block_given?
+          yield gpio2v
+        else
+          return gpio2v
+        end
+        gpios = gpios.select{|g| File.readable? g.value_path}
+      end
+    end
   end
-  private :poll_once
-  def poll(timeout:nil, ready:nil)
-    vio = File.new path(:value)
-    v = poll_once vio
-    ready.call v if ready
-    if block_given?
-      while File.readable? path(:value) do yield(poll_once(vio,timeout)); end
-    else
-      poll_once(vio, timeout)
+  def poll(timeout:nil, ready:nil, &block)
+    ready_wrapper = ready ? Proc.new{|v| ready.call(v[self])} : nil
+    self.class.poll([self], timeout:timeout, ready:ready_wrapper) do |v|
+      v = v[self] if v
+      if block
+        block.call v
+      else
+        break v
+      end
     end
   end
 end
