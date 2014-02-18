@@ -45,12 +45,12 @@ class GPIO
       end
     end
   end
-  def poll(timeout:nil, ready:nil, &block)
+  def poll(timeout:nil, ready:nil)
     ready_wrapper = ready ? Proc.new{|v| ready.call(v[self])} : nil
     self.class.poll([self], timeout:timeout, ready:ready_wrapper) do |v|
       v = v[self] if v
-      if block
-        block.call v
+      if block_given?
+        yield v
       else
         break v
       end
