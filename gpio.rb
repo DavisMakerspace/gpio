@@ -12,11 +12,12 @@ class GPIO
   def input?; File.read(direction_path).chomp == 'in'; end
   def output?; File.read(direction_path).chomp == 'out'; end
   def set_input; File.write(direction_path, 'in'); self; end
-  def set_output(value = :low); File.write(direction_path, value == :low ? 'low':'high'); self; end
-  def set?; File.read(value_path).chomp == '1'; end
-  def clear?; File.read(value_path).chomp == '0'; end
-  def set(v = true); File.write(value_path, v ? '1':'0'); self; end
-  def clear; set false; end
+  def set_output_low(v=true); File.write(direction_path, v ? 'low':'high'); self; end
+  def set_output_high(v=true); set_output_low(!v); self; end
+  def low?; File.read(value_path).chomp == '0'; end
+  def high?; File.read(value_path).chomp == '1'; end
+  def set_low(v=true); File.write(value_path, v ? '0':'1'); self; end
+  def set_high(v=true); set_low(!v); self; end
   def edge; File.read(edge_path).chomp.to_sym; end
   def set_edge_none; File.write(edge_path, 'none'); self; end
   def set_edge_rising; File.write(edge_path, 'rising'); self; end
