@@ -18,11 +18,10 @@ class GPIO
   def high?; File.read(value_path).chomp == '1'; end
   def set_low(v=true); File.write(value_path, v ? '0':'1'); self; end
   def set_high(v=true); set_low(!v); self; end
-  def edge; File.read(edge_path).chomp.to_sym; end
-  def set_edge_none; File.write(edge_path, 'none'); self; end
-  def set_edge_rising; File.write(edge_path, 'rising'); self; end
-  def set_edge_falling; File.write(edge_path, 'falling'); self; end
-  def set_edge_both; File.write(edge_path, 'both'); self; end
+  [:none, :rising, :falling, :both].each do |edge|
+    define_method("set_edge_#{edge}"){ File.write(edge_path, edge); self }
+    define_method("edge_#{edge}?"){ File.read(edge_path).chomp.to_sym == edge }
+  end
   def active_low?; File.read(active_low_path).chomp == '1'; end
   def set_active_low(v = true); File.write(active_low_path, v ? '1':'0'); self; end
   class << self
