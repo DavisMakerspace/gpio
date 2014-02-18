@@ -50,9 +50,9 @@ class GPIO
     self.class.poll([self], timeout:timeout, ready:ready_wrapper) do |v|
       v = v[self] if v
       if block
-        block.call(v)
+        block.call v
       else
-        break(v)
+        break v
       end
     end
   end
