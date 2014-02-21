@@ -1,0 +1,4 @@
+ACTION=="add", DEVPATH=="/devices/virtual/gpio/gpiochip0", RUN+="/usr/bin/chown -R gpio:gpio sys/$devpath/subsystem/"
+ACTION=="add", DEVPATH=="/devices/virtual/gpio/gpiochip0", RUN+="/usr/bin/chmod -R g+w sys/$devpath/subsystem/"
+ACTION=="add", SUBSYSTEM=="gpio", RUN+="/usr/bin/chown -R --reference=/sys/class/gpio/export sys/$devpath"
+ACTION=="add", SUBSYSTEM=="gpio", RUN+="/usr/bin/chmod -R g+w sys/$devpath"
