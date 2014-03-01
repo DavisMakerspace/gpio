@@ -50,6 +50,7 @@ describe GPIO do
   end
   def square_wave(gpio)
     gpio.set_output_low
+    gpio.must_be :low?
     queue = Queue.new
     thread = Thread.new do
       loop do
@@ -61,47 +62,51 @@ describe GPIO do
   end
   def edge_test(gpio)
     queue, thread = square_wave gpio
-    ready = lambda{|v| v.must_equal false; queue.push :trigger}
-    count = TIMES
-    gpio.poll(ready:ready, timeout:TIMEOUT) do |v|
-      yield v
-      count-=1; break if count.zero?
+    TIMES.times do |t|
       queue.push :trigger
+      yield gpio.select(timeout:TIMEOUT)
     end
     queue.push :exit; thread.join
   end
   it "can trigger on none" do
     @gpio.set_edge_none
     @gpio.must_be :edge_none?
-    edge_test(@gpio) {|v| v.must_be_nil}
+    edge_test(@gpio) {|g| g.must_be_nil}
   end
   it "can trigger on rising" do
     @gpio.set_edge_rising
     @gpio.must_be :edge_rising?
-    edge_test(@gpio) {|v| @gpio.high? ? v.must_equal(true) : v.must_be_nil}
+    edge_test(@gpio) {|g| @gpio.high? ? g.must_equal(@gpio) : g.must_be_nil}
   end
   it "can trigger on falling" do
     @gpio.set_edge_falling
     @gpio.must_be :edge_falling?
-    edge_test(@gpio) {|v| @gpio.high? ? v.must_be_nil : v.must_equal(false)}
+    edge_test(@gpio) {|g| @gpio.high? ? g.must_be_nil : g.must_equal(@gpio)}
   end
   it "can trigger on both" do
     @gpio.set_edge_both
     @gpio.must_be :edge_both?
-    edge_test(@gpio) {|v| v.must_equal @gpio.high?}
+    edge_test(@gpio) {|g| @gpio.high?; g.must_equal(@gpio)}
   end
   it "can trigger on multiple" do
     @gpio.set_edge_both
     @gpio2.set_edge_both
     queue, thread = square_wave @gpio
     queue2, thread2 = square_wave @gpio2
-    ready = lambda{|g2v| g2v.values{|v|v.must_equal false}; queue.push :trigger}
-    count = TIMES
-    GPIO.poll([@gpio, @gpio2], ready:ready, timeout:TIMEOUT) do |g2v|
-      g2v.wont_be_nil
-      g2v.each{|g,v| v.must_equal g.high?}
-      count-=1; break if count.zero?
-      g2v.each{|g,v| g==@gpio ? queue2.push(:trigger) : queue.push(:trigger)}
+    prev, prev2 = [@gpio.high?, @gpio2.high?]
+    queue.push :trigger
+    TIMES.times do
+      gpios = GPIO.select([@gpio, @gpio2], timeout:TIMEOUT)
+      gpios.wont_be_nil; gpios.size.must_equal 1
+      if gpios[0] == @gpio
+        @gpio.high?.must_equal !prev
+        prev = @gpio.high?
+        queue2.push :trigger
+      else
+        @gpio2.high?.must_equal !prev2
+        prev2 = @gpio2.high?
+        queue.push :trigger
+      end
     end
     queue.push :exit; queue2.push :exit; thread.join; thread2.join
   end
