@@ -1,14 +1,15 @@
 class GPIO
+  attr_reader :id
   GPIO_PATH = "/sys/class/gpio"
   def initialize(id)
     @id = id
   end
   [:value, :direction, :edge, :active_low].each do |attr|
-    define_method("#{attr}_path"){ "#{GPIO_PATH}/gpio#{@id}/#{attr}" }
+    define_method("#{attr}_path"){ "#{GPIO_PATH}/gpio#{id}/#{attr}" }
   end
   def exported?; File.exists?(value_path); end
-  def export; File.write("#{GPIO_PATH}/export", @id); self; end
-  def unexport; File.write("#{GPIO_PATH}/unexport", @id); self; end
+  def export; File.write("#{GPIO_PATH}/export", id); self; end
+  def unexport; File.write("#{GPIO_PATH}/unexport", id); self; end
   def input?; File.read(direction_path).chomp == 'in'; end
   def output?; File.read(direction_path).chomp == 'out'; end
   def set_input; File.write(direction_path, 'in'); self; end
