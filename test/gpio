@@ -1,6 +1,10 @@
 #!/usr/bin/env ruby
 
-require_relative '../gpio'
+if ARGV[0] == 'fake'
+  require_relative '../fakegpio'; GPIO=FakeGPIO
+else
+  require_relative '../gpio'
+end
 
 require 'minitest/spec'
 require 'minitest/autorun'
