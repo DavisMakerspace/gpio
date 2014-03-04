@@ -1,14 +1,17 @@
 class GPIO
   attr_reader :id
   @@DIR = "/sys/class/gpio"
+  @@ATTRS = [:value,:direction,:edge,:active_low]
   class << self
     [:export,:unexport].each{|e| define_method(e){|id| !!File.write("#{@@DIR}/#{e}",id)}}
   end
   def initialize(id)
     @id = id
-    [:value,:direction,:edge,:active_low].each{|a| instance_variable_set("@#{a}_path","#{@@DIR}/gpio#{id}/#{a}")}
+    @@ATTRS.each{|a| instance_variable_set("@#{a}_path","#{@@DIR}/gpio#{id}/#{a}")}
   end
   def to_io; @io||=File.new(@value_path); end
+  def chmod(mode); File.chmod(mode,*@@ATTRS.map{|a|instance_variable_get("@#{a}_path")}); self; end
+  def chown(owner,group); File.chown(owner,group,*@@ATTRS.map{|a|instance_variable_get("@#{a}_path")}); self; end
   def exported?; File.exists?(@value_path); end
   def export; self.class.export id; self; end
   def unexport; self.class.unexport id; self; end

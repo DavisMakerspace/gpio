@@ -58,6 +58,8 @@ class FakeGPIO
     @id = id
     @trigger = FakeGPIOTrigger.new
   end
+  def chmod(_); self; end
+  def chown(_,_); self; end
   def pin; PINS[@id]; end
   def exported?; !!pin; end
   def export; PINS[@id]||=FakeGPIOPin.new; pin.add_trigger(@trigger); self; end
