@@ -1,0 +1,23 @@
+#!/usr/bin/env ruby
+require 'optparse'
+require 'etc'
+require_relative 'gpio'
+
+banner = "Usage: #{$0} [options] gpio ..."
+user = nil
+group = nil
+mode = nil
+OptionParser.new do |op|
+  op.banner = banner
+  op.on('-u', '--user USER', 'User to own exported GPIOs') {|v|user=Etc.getpwnam(v).uid}
+  op.on('-g', '--group GROUP', 'Group to own exported GPIOs') {|v|group=Etc.getgrnam(v).gid}
+  op.on('-m', '--mode MODE', OptionParser::OctalInteger, 'File mode for exported GPIOs') {|v|mode=v}
+end.parse!
+(puts banner; exit 1) if ARGV.empty?
+
+ARGV.map{|a|Integer(a)}.each do |gpioid|
+  gpio = GPIO.new gpioid
+  gpio.export if !gpio.exported?
+  gpio.chown(user,group) if user || group
+  gpio.chmod(mode) if mode
+end

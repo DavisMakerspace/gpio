@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+require_relative 'gpio'
+(puts "Usage: #{$0} [options] gpio ..."; exit 1) if ARGV.empty?
+ARGV.map{|a|Integer(a)}.each do |gpioid|
+  gpio = GPIO.new gpioid
+  gpio.unexport if gpio.exported?
+end
