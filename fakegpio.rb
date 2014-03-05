@@ -18,10 +18,10 @@ class FakeGPIOTrigger
 end
 class FakeGPIOPin
   def initialize
-    @value = :low
+    @value = 0
     @direction = :in
     @edge = :none
-    @active_low = false
+    @active_low = 0
     @triggers = []
   end
   def add_trigger(t); @triggers.push(t).uniq!; end
@@ -29,27 +29,24 @@ class FakeGPIOPin
   def value; @value; end
   def value=(v)
     old_value = @value
-    @value = (v==:low ? :low : :high)
+    @value = Integer(v)==0?0:1
     @triggers.each{|t|t.fire} if (
       ( old_value != @value && @edge == :both ) ||
-      ( old_value == :low && @value == :high && @edge == :rising ) ||
-      ( old_value == :high && @value == :low && @edge == :falling )
+      ( old_value == 0 && @value == 1 && @edge == :rising ) ||
+      ( old_value == 1 && @value == 0 && @edge == :falling )
     )
     @value
   end
   def direction; @direction; end
   def direction=(d)
-    @direction = d if [:in,:out].include? d
-    (@direction=:out; @value=d) if [:low,:high].include? d
-    @direction
+    return d if ![:in,:out,:low,:high].include? d
+    self.value = d==:high ? 1 : 0 if d!=:in
+    @direction = d==:in ? d : :out
   end
   def edge; @edge; end
-  def edge=(e)
-    @edge = e if [:none,:rising,:falling,:both].include? e
-    @edge
-  end
+  def edge=(e); @edge = [:none,:rising,:falling,:both].include?(e) ? e : @edge; end
   def active_low; @active_low; end
-  def active_low=(a); @active_low = !!a; end
+  def active_low=(a); @active_low = Integer(a)==0?0:1; end
 end
 class FakeGPIO
   attr_reader :id, :trigger
@@ -69,16 +66,16 @@ class FakeGPIO
   def set_input; pin.direction = :in; end
   def set_output_low(v=true); pin.direction = (v ? :low : :high); self; end
   def set_output_high(v=true); set_output_low(!v); self; end
-  def low?; @trigger.reset; pin.value == :low; end
+  def low?; @trigger.reset; pin.value == 0; end
   def high?; !low?; end
-  def set_low(v=true); pin.value = (v ? :low : :high); self; end
+  def set_low(v=true); pin.value = (v)?0:1; self; end
   def set_high(v=true); set_low(!v); self; end
   [:none, :rising, :falling, :both].each do |edge|
     define_method("set_edge_#{edge}"){ pin.edge = edge; self }
     define_method("edge_#{edge}?"){ pin.edge == edge }
   end
-  def active_low?; pin.active_low; end
-  def set_active_low(v = true); pin.active_low = v; self; end
+  def active_low?; pin.active_low==1; end
+  def set_active_low(v = true); pin.active_low = (v)?1:0; self; end
   class << self
     def select(gpios, timeout:nil)
       t2g = Hash[ gpios.map{|g|[g.trigger,g]} ]
