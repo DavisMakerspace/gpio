@@ -17,7 +17,7 @@ class FakeGPIO
   def unexport; chkexp; @redis.del(rkey(:value),rkey(:direction),rkey(:edge),rkey(:active_low),rkey(:edge_count)); self; end
   def input?; chkexp; @redis.get(rkey(:direction)).to_sym==:in; end
   def output?; chkexp; @redis.get(rkey(:direction)).to_sym==:out; end
-  def set_input; chkexp; @redis.set(rkey(:direction),:in); end
+  def set_input; chkexp; @redis.set(rkey(:direction),:in); self; end
   def set_output_low(v=true); chkexp; @redis.set(rkey(:direction),:out); self.set_low(v); end
   def set_output_high(v=true); set_output_low(!v); end
   def low?; chkexp; @edge_count=@redis.get(rkey(:edge_count)); @redis.getbit(rkey(:value),0)==0; end
